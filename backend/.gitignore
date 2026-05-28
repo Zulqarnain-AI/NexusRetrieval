@@ -1,0 +1,14 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Data — never commit vector DB or user uploads
+chroma_db/
+uploads/
+logs/
+
+# OS
+.DS_Store

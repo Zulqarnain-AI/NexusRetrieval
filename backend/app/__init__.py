@@ -1,7 +1,8 @@
 # app/__init__.py
 import logging
-from flask import Flask
-from flask_cors import CORS
+import os
+from flask import Flask # type: ignore
+from flask_cors import CORS # type: ignore
 
 from app.config import config
 from app.core.logging_config import configure_logging
@@ -9,33 +10,32 @@ from app.core.logging_config import configure_logging
 
 def create_app() -> Flask:
     """
-    Application factory. Creates and configures the Flask app instance.
+    Application factory.
     """
-    # ── Logging first — so every subsequent step is observable ───────────────
+    # ── Logging first ─────────────────────────────────────────────────────
     configure_logging(log_level=config.log_level, log_dir=config.log_dir)
     logger = logging.getLogger(__name__)
 
     app = Flask(__name__)
 
-    # ── Load config into Flask ────────────────────────────────────────────────
+    # ── Flask config ──────────────────────────────────────────────────────
     app.secret_key = config.secret_key
     app.config["MAX_CONTENT_LENGTH"] = config.max_upload_bytes
     app.config["UPLOAD_FOLDER"] = config.upload_folder_resolved_path
 
-    # ── CORS ──────────────────────────────────────────────────────────────────
+    # ── CORS ──────────────────────────────────────────────────────────────
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    # ── Ensure runtime directories exist ─────────────────────────────────────
-    import os
+    # ── Runtime directories ───────────────────────────────────────────────
     os.makedirs(config.upload_folder_resolved_path, exist_ok=True)
     os.makedirs(config.chroma_db_resolved_path, exist_ok=True)
     os.makedirs(config.log_dir, exist_ok=True)
 
-    # ── Blueprints (uncomment as we build each phase) ─────────────────────────
-    # from app.routes.ingest import ingest_bp
-    # from app.routes.chat import chat_bp
-    # app.register_blueprint(ingest_bp, url_prefix="/api")
-    # app.register_blueprint(chat_bp, url_prefix="/api")
+    # ── Blueprints ────────────────────────────────────────────────────────
+    from app.routes.ingest import ingest_bp
+    from app.routes.chat import chat_bp
+    app.register_blueprint(ingest_bp, url_prefix="/api")
+    app.register_blueprint(chat_bp, url_prefix="/api")
 
     logger.info(
         "NexusRetrieval app started",

@@ -18,6 +18,7 @@ sentence-transformers~=3.0
 # Document loaders
 pypdf~=4.0           # PDF parsing (more maintained than PyPDF2)
 python-docx~=1.1     # DOCX parsing
+docx2txt~=0.8
 beautifulsoup4~=4.12 # Web scraping (used by WebBaseLoader)
 lxml~=5.2            # Faster HTML parser for bs4
 
@@ -32,3 +33,5 @@ pydantic-settings~=2.0
 
 # Logging
 python-json-logger~=2.0   # Structured JSON logs (parseable by Datadog, etc.)
+
+playwright~=1.44

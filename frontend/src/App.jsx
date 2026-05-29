@@ -1,322 +1,356 @@
+// src/App.jsx
 import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  FileText, Globe, Trash2, ChevronDown, ChevronRight, Send,
-  Upload, Link, Brain, Sparkles, X, Menu, PanelRightOpen,
-  PanelRightClose, Loader2, CheckCircle2, Clock, Zap,
-  BookOpen, Search, BarChart3, MessageSquare, File, AlertCircle,
-  Hash, ArrowUp, Copy, Check
-} from "lucide-react";
+import { useChat } from "./hooks/useChat";
+import { useKnowledgeBase } from "./hooks/useKnowledgeBase";
 
-// ─── Design Tokens ───────────────────────────────────────────────────────────
-const STATUS_COLORS = {
-  connected: "bg-emerald-500",
-  disconnected: "bg-red-500",
-  connecting: "bg-amber-400",
+// ── Icons (inline SVG — no extra dependency) ──────────────────────────────────
+const Icon = {
+  Brain: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.44-3.14Z"/>
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.44-3.14Z"/>
+    </svg>
+  ),
+  Upload: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+  ),
+  Link: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </svg>
+  ),
+  File: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+  ),
+  Globe: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
+      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+  ),
+  Trash: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    </svg>
+  ),
+  Send: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full">
+      <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  ),
+  Stop: () => (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <rect x="6" y="6" width="12" height="12" rx="2"/>
+    </svg>
+  ),
+  ChevronDown: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  ),
+  ChevronRight: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  ),
+  Menu: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  ),
+  X: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  ),
+  Sparkles: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
+      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+    </svg>
+  ),
 };
 
-const FILE_STATUS = {
-  parsing: { label: "Parsing", color: "text-amber-400", dot: "bg-amber-400", animate: true },
-  embedding: { label: "Embedding", color: "text-violet-400", dot: "bg-violet-500", animate: true },
-  ready: { label: "Ready", color: "text-emerald-400", dot: "bg-emerald-500", animate: false },
-};
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const truncate = (str, n) => str.length > n ? str.slice(0, n) + "…" : str;
 
-const STARTER_CARDS = [
-  { icon: BarChart3, title: "Summarize the financial report", desc: "Get key insights from uploaded documents" },
-  { icon: Search, title: "Compare across sources", desc: "Find contradictions or patterns across files" },
-  { icon: BookOpen, title: "Extract action items", desc: "Identify tasks and next steps from documents" },
+const STATUS_CONFIG = {
+  parsing:   { label: "Parsing",   color: "#f59e0b", pulse: true  },
+  embedding: { label: "Embedding", color: "#8b5cf6", pulse: true  },
+  ready:     { label: "Ready",     color: "#10b981", pulse: false },
+  error:     { label: "Error",     color: "#ef4444", pulse: false },
+};
+
+const CONN_COLOR = {
+  connected:    "#10b981",
+  disconnected: "#ef4444",
+  connecting:   "#f59e0b",
+};
+
+const STARTER_PROMPTS = [
+  "Summarize the key points from the uploaded documents.",
+  "What are the main topics covered across all sources?",
+  "Extract any action items or recommendations mentioned.",
 ];
 
-const MOCK_SOURCES = [
-  { id: 1, doc: "Q4_Financial_Report.pdf", page: 4, snippet: "Revenue grew by 34% YoY reaching $2.4B in Q4 2024, driven primarily by enterprise subscriptions and expansion into APAC markets..." },
-  { id: 2, doc: "Strategy_Memo_2025.docx", page: 1, snippet: "The board has approved accelerated investment in AI infrastructure totaling $800M over 18 months, with focus on compute and talent acquisition..." },
-  { id: 3, doc: "market_overview.txt", page: null, snippet: "Total addressable market estimated at $47B by 2027, with AI-native platforms capturing roughly 40% of new enterprise contracts..." },
-];
-
-const INITIAL_DOCS = [
-  { id: 1, name: "Q4_Financial_Report.pdf", type: "pdf", status: "ready", size: "2.4 MB" },
-  { id: 2, name: "Strategy_Memo_2025.docx", type: "docx", status: "embedding", size: "890 KB" },
-  { id: 3, name: "market_overview.txt", type: "txt", status: "parsing", size: "124 KB" },
-  { id: 4, name: "https://openai.com/blog/...", type: "web", status: "ready", size: "Web" },
-];
-
-const INITIAL_MESSAGES = [
-  {
-    id: 1, role: "user",
-    content: "What was the revenue growth in Q4 and what's driving it?",
-    ts: "10:42 AM"
-  },
-  {
-    id: 2, role: "ai",
-    content: `Based on the uploaded documents, here's a comprehensive breakdown of Q4 performance:
-
-**Revenue Growth Overview**
-Revenue reached **$2.4 billion** in Q4 2024, representing a **34% year-over-year increase** — significantly outpacing the industry average of 18%.
-
-**Key Growth Drivers**
-1. **Enterprise subscriptions** — Accounted for 62% of total revenue, up from 51% in Q3
-2. **APAC expansion** — New market penetration contributed ~$340M in incremental revenue
-3. **Product upsells** — Existing customers expanded usage by an average of 2.3x
-
-**Notable Risks**
-The strategy memo flags that maintaining this trajectory requires the $800M AI infrastructure investment approved by the board, with returns expected no earlier than Q3 2026.`,
-    ts: "10:42 AM",
-    sources: MOCK_SOURCES,
-    sourcesOpen: false
-  }
-];
-
-// ─── Sub-Components ───────────────────────────────────────────────────────────
-
-function FileIcon({ type, size = 16 }) {
-  const cls = `w-${size === 16 ? 4 : 5} h-${size === 16 ? 4 : 5}`;
-  if (type === "pdf") return <FileText className={cls + " text-rose-400"} />;
-  if (type === "docx") return <File className={cls + " text-sky-400"} />;
-  if (type === "web") return <Globe className={cls + " text-emerald-400"} />;
-  return <File className={cls + " text-zinc-400"} />;
-}
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusDot({ status }) {
-  const s = FILE_STATUS[status];
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.parsing;
   return (
-    <span className="flex items-center gap-1.5">
-      <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.dot} ${s.animate ? "animate-pulse" : ""}`} />
-      <span className={`text-[11px] font-medium ${s.color}`}>{s.label}</span>
+    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+      <span style={{
+        width: 7, height: 7, borderRadius: "50%",
+        background: cfg.color, display: "inline-block",
+        animation: cfg.pulse ? "pulse 1.5s ease-in-out infinite" : "none",
+      }} />
+      <span style={{ fontSize: 11, color: cfg.color, fontWeight: 500 }}>
+        {cfg.label}
+      </span>
     </span>
   );
 }
 
 function DocItem({ doc, onDelete }) {
   const [hovered, setHovered] = useState(false);
+  const iconColor = doc.type === "pdf" ? "#fb7185"
+    : doc.type === "docx" ? "#60a5fa"
+    : doc.type === "web" ? "#34d399" : "#a78bfa";
+
   return (
     <div
-      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-800/60 transition-all duration-150 cursor-default"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "9px 12px", borderRadius: 10, cursor: "default",
+        background: hovered ? "rgba(39,39,42,0.8)" : "transparent",
+        transition: "background .15s",
+      }}
     >
-      <FileIcon type={doc.type} size={16} />
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-zinc-200 truncate leading-tight">{truncate(doc.name, 28)}</p>
-        <div className="flex items-center gap-2 mt-0.5">
+      <span style={{ width: 16, height: 16, color: iconColor, flexShrink: 0 }}>
+        {doc.type === "web" ? <Icon.Globe /> : <Icon.File />}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 12, color: "#d4d4d8",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>
+          {truncate(doc.name, 28)}
+        </div>
+        <div style={{ marginTop: 3 }}>
           <StatusDot status={doc.status} />
-          <span className="text-[11px] text-zinc-600">{doc.size}</span>
         </div>
       </div>
-      <button
-        onClick={() => onDelete(doc.id)}
-        className={`p-1 rounded-md text-zinc-600 hover:text-rose-400 hover:bg-zinc-700 transition-all duration-150 ${hovered ? "opacity-100" : "opacity-0"}`}
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      {hovered && (
+        <button
+          onClick={() => onDelete(doc.id)}
+          style={{
+            width: 20, height: 20, padding: 2, borderRadius: 5,
+            border: "none", background: "transparent",
+            color: "#71717a", cursor: "pointer",
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+          onMouseLeave={e => e.currentTarget.style.color = "#71717a"}
+        >
+          <Icon.Trash />
+        </button>
+      )}
     </div>
   );
 }
 
-function DropZone({ onFileDrop }) {
+function DropZone({ onFiles }) {
   const [dragging, setDragging] = useState(false);
-  const [url, setUrl] = useState("");
   const inputRef = useRef();
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    onFileDrop(files);
-  };
-
   return (
-    <div className="space-y-2.5">
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200
-          ${dragging
-            ? "border-violet-500 bg-violet-500/10"
-            : "border-zinc-700 hover:border-zinc-500 bg-zinc-800/40 hover:bg-zinc-800/70"
-          }`}
-      >
-        <input ref={inputRef} type="file" multiple accept=".pdf,.docx,.txt" className="hidden" onChange={(e) => onFileDrop(Array.from(e.target.files))} />
-        <Upload className={`w-6 h-6 mx-auto mb-2 transition-colors ${dragging ? "text-violet-400" : "text-zinc-500"}`} />
-        <p className="text-[12px] text-zinc-400 leading-relaxed">
-          <span className="text-violet-400 font-medium">Click to upload</span> or drag & drop
-        </p>
-        <p className="text-[11px] text-zinc-600 mt-1">PDF, DOCX, TXT supported</p>
+    <div
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={e => {
+        e.preventDefault();
+        setDragging(false);
+        onFiles(Array.from(e.dataTransfer.files));
+      }}
+      onClick={() => inputRef.current?.click()}
+      style={{
+        border: `2px dashed ${dragging ? "#7c3aed" : "#3f3f46"}`,
+        borderRadius: 12, padding: "18px 12px", textAlign: "center",
+        cursor: "pointer", background: dragging ? "rgba(124,58,237,.08)" : "rgba(39,39,42,0.4)",
+        transition: "all .2s",
+      }}
+    >
+      <input
+        ref={inputRef} type="file" multiple
+        accept=".pdf,.docx,.txt" style={{ display: "none" }}
+        onChange={e => onFiles(Array.from(e.target.files))}
+      />
+      <div style={{ width: 24, height: 24, margin: "0 auto 8px", color: dragging ? "#a78bfa" : "#71717a" }}>
+        <Icon.Upload />
       </div>
-
-      <div className="flex gap-2">
-        <div className="flex-1 flex items-center gap-2 bg-zinc-800/60 border border-zinc-700 rounded-lg px-3 py-2 focus-within:border-zinc-500 transition-colors">
-          <Link className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-          <input
-            type="text"
-            placeholder="Paste URL to scrape…"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="bg-transparent text-[12px] text-zinc-300 placeholder:text-zinc-600 outline-none flex-1 min-w-0"
-          />
-        </div>
-        <button
-          onClick={() => { if (url) { onFileDrop([{ name: url, type: "web" }]); setUrl(""); }}}
-          className="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[12px] font-medium transition-colors whitespace-nowrap"
-        >
-          Scrape
-        </button>
+      <div style={{ fontSize: 12, color: "#a1a1aa" }}>
+        <span style={{ color: "#a78bfa", fontWeight: 600 }}>Click to upload</span> or drag & drop
       </div>
+      <div style={{ fontSize: 11, color: "#52525b", marginTop: 4 }}>PDF, DOCX, TXT</div>
     </div>
   );
 }
 
-function SourceCard({ source, onClick }) {
+function SourcesAccordion({ sources }) {
+  const [open, setOpen] = useState(false);
+  if (!sources || sources.length === 0) return null;
+
   return (
-    <button
-      onClick={() => onClick(source)}
-      className="w-full text-left p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600 hover:bg-zinc-800 transition-all duration-150 group"
-    >
-      <div className="flex items-center gap-2 mb-1.5">
-        <FileIcon type={source.doc.endsWith(".pdf") ? "pdf" : source.doc.endsWith(".docx") ? "docx" : "txt"} size={14} />
-        <span className="text-[11px] font-medium text-zinc-300">{truncate(source.doc, 30)}</span>
-        {source.page && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-zinc-600">
-            <Hash className="w-3 h-3" />p.{source.page}
-          </span>
-        )}
-      </div>
-      <p className="text-[12px] text-zinc-500 leading-relaxed line-clamp-2 group-hover:text-zinc-400 transition-colors">
-        {source.snippet}
-      </p>
-    </button>
+    <div style={{ marginTop: 12 }}>
+      <button
+        onClick={() => setOpen(p => !p)}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "5px 10px", borderRadius: 8,
+          border: "1px solid rgba(63,63,70,.5)",
+          background: "rgba(39,39,42,.6)",
+          cursor: "pointer", color: "#71717a",
+          fontSize: 12, fontFamily: "inherit",
+          transition: "all .15s",
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = "#52525b"}
+        onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(63,63,70,.5)"}
+      >
+        <span style={{ width: 14, height: 14 }}>
+          {open ? <Icon.ChevronDown /> : <Icon.ChevronRight />}
+        </span>
+        <span>{sources.length} Retrieved Source{sources.length !== 1 ? "s" : ""}</span>
+        <span style={{
+          width: 18, height: 18, borderRadius: "50%",
+          background: "rgba(124,58,237,.25)", color: "#a78bfa",
+          fontSize: 10, display: "flex", alignItems: "center",
+          justifyContent: "center", fontWeight: 600,
+        }}>
+          {sources.length}
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+          {sources.map((src, i) => (
+            <div key={i} style={{
+              padding: "10px 12px", borderRadius: 10,
+              background: "rgba(39,39,42,.5)",
+              border: "1px solid rgba(63,63,70,.5)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                <span style={{
+                  width: 14, height: 14, flexShrink: 0,
+                  color: src.source_type === "pdf" ? "#fb7185"
+                    : src.source_type === "web" ? "#34d399" : "#60a5fa",
+                }}>
+                  {src.source_type === "web" ? <Icon.Globe /> : <Icon.File />}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#d4d4d8" }}>
+                  {truncate(src.source_name, 40)}
+                </span>
+                {src.page && (
+                  <span style={{ marginLeft: "auto", fontSize: 10, color: "#52525b" }}>
+                    p.{src.page}
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: 11, color: "#71717a", lineHeight: 1.6, margin: 0 }}>
+                {src.snippet}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-function MarkdownRenderer({ content }) {
-  const lines = content.split("\n");
-  const rendered = [];
-  let inList = false;
-
-  lines.forEach((line, i) => {
-    if (line.startsWith("**") && line.endsWith("**") && line.length > 4) {
-      if (inList) { rendered.push(<ul key={`ul-${i}`} className="space-y-1 mb-3">{rendered.splice(rendered.findIndex(el => el?.type === "li"))}
-      </ul>); inList = false; }
-      rendered.push(<p key={i} className="text-[13px] font-semibold text-zinc-100 mt-4 mb-2 first:mt-0">{line.replace(/\*\*/g, "")}</p>);
-    } else if (line.startsWith("1. ") || line.startsWith("2. ") || line.startsWith("3. ")) {
-      const match = line.match(/^\d+\.\s+(.+)/);
-      if (match) {
-        const txt = match[1].replace(/\*\*([^*]+)\*\*/g, "$1");
-        rendered.push(
-          <div key={i} className="flex gap-2.5 mb-1.5">
-            <span className="text-[11px] font-semibold text-violet-400 mt-0.5 shrink-0">{line.match(/^\d+/)[0]}.</span>
-            <span className="text-[13px] text-zinc-300 leading-relaxed">{txt}</span>
-          </div>
-        );
-      }
-    } else if (line === "") {
-      rendered.push(<div key={i} className="h-1" />);
-    } else {
-      // Inline bold
-      const parts = line.split(/\*\*([^*]+)\*\*/g);
-      rendered.push(
-        <p key={i} className="text-[13px] text-zinc-300 leading-relaxed mb-1">
-          {parts.map((p, j) => j % 2 === 1 ? <strong key={j} className="text-zinc-100 font-semibold">{p}</strong> : p)}
-        </p>
-      );
-    }
-  });
-
-  return <div className="space-y-0.5">{rendered}</div>;
+function SkeletonLoader() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "4px 0" }}>
+      {[75, 100, 88, 55].map((w, i) => (
+        <div key={i} style={{
+          height: 12, borderRadius: 6,
+          background: "#27272a", width: `${w}%`,
+          animation: "shimmer 1.4s ease-in-out infinite",
+          animationDelay: `${i * 0.1}s`,
+        }} />
+      ))}
+    </div>
+  );
 }
 
-function ChatMessage({ msg, onSourceClick, onToggleSources }) {
-  const [copied, setCopied] = useState(false);
+function ChatMessage({ msg }) {
+  const isUser = msg.role === "user";
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(msg.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  if (msg.role === "user") {
+  if (isUser) {
     return (
-      <div className="flex justify-end mb-6">
-        <div className="max-w-[72%]">
-          <div className="bg-zinc-800 border border-zinc-700/50 rounded-2xl rounded-tr-sm px-4 py-3">
-            <p className="text-[14px] text-zinc-200 leading-relaxed">{msg.content}</p>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
+        <div style={{ maxWidth: "72%" }}>
+          <div style={{
+            background: "#27272a",
+            border: "1px solid rgba(63,63,70,.5)",
+            borderRadius: "18px 18px 4px 18px",
+            padding: "10px 16px",
+          }}>
+            <p style={{ fontSize: 14, color: "#e4e4e7", lineHeight: 1.6, margin: 0 }}>
+              {msg.content}
+            </p>
           </div>
-          <p className="text-[11px] text-zinc-600 text-right mt-1.5 mr-1">{msg.ts}</p>
+          <div style={{ fontSize: 11, color: "#52525b", textAlign: "right", marginTop: 4 }}>
+            {msg.ts}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex gap-3 mb-6 group">
-      <div className="w-7 h-7 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center shrink-0 mt-0.5">
-        <Brain className="w-3.5 h-3.5 text-violet-400" />
+    <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+        background: "rgba(124,58,237,.2)",
+        border: "1px solid rgba(124,58,237,.3)",
+        display: "flex", alignItems: "center",
+        justifyContent: "center", marginTop: 2,
+        color: "#a78bfa", padding: 6,
+      }}>
+        <Icon.Brain />
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[12px] font-semibold text-zinc-300">ContextMind</span>
-          <span className="text-[11px] text-zinc-600">{msg.ts}</span>
-          <button
-            onClick={handleCopy}
-            className="ml-auto opacity-0 group-hover:opacity-100 p-1 rounded text-zinc-600 hover:text-zinc-300 transition-all"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-          </button>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#d4d4d8" }}>
+            NexusRetrieval
+          </span>
+          <span style={{ fontSize: 11, color: "#52525b" }}>{msg.ts}</span>
+          {msg.isStreaming && (
+            <span style={{
+              fontSize: 11, color: "#a78bfa",
+              animation: "pulse 1s ease-in-out infinite",
+            }}>
+              ● thinking
+            </span>
+          )}
         </div>
 
-        <div className="text-[13px] leading-relaxed">
-          <MarkdownRenderer content={msg.content} />
-        </div>
+        {msg.isStreaming && !msg.content
+          ? <SkeletonLoader />
+          : (
+            <div style={{
+              fontSize: 13, color: "#a1a1aa", lineHeight: 1.8,
+              whiteSpace: "pre-wrap", wordBreak: "break-word",
+            }}>
+              {msg.content}
+            </div>
+          )
+        }
 
-        {msg.sources && (
-          <div className="mt-4">
-            <button
-              onClick={() => onToggleSources(msg.id)}
-              className="flex items-center gap-2 text-[12px] text-zinc-500 hover:text-zinc-300 transition-colors mb-2 group/btn"
-            >
-              <div className="flex items-center gap-1.5 bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-2.5 py-1.5 group-hover/btn:border-zinc-600 transition-colors">
-                {msg.sourcesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                <span>{msg.sources.length} Retrieved Sources</span>
-                <span className="ml-1 w-4 h-4 rounded-full bg-violet-600/30 text-violet-300 text-[10px] flex items-center justify-center font-medium">
-                  {msg.sources.length}
-                </span>
-              </div>
-            </button>
-
-            {msg.sourcesOpen && (
-              <div className="grid grid-cols-1 gap-2 mt-1">
-                {msg.sources.map(src => (
-                  <SourceCard key={src.id} source={src} onClick={onSourceClick} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StreamingMessage() {
-  return (
-    <div className="flex gap-3 mb-6">
-      <div className="w-7 h-7 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center shrink-0 mt-0.5">
-        <Brain className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
-      </div>
-      <div className="flex-1 pt-1">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[12px] font-semibold text-zinc-300">ContextMind</span>
-          <span className="text-[11px] text-zinc-600">now</span>
-        </div>
-        <div className="space-y-2">
-          <div className="h-3 bg-zinc-800 rounded-full w-3/4 animate-pulse" />
-          <div className="h-3 bg-zinc-800 rounded-full w-full animate-pulse" />
-          <div className="h-3 bg-zinc-800 rounded-full w-5/6 animate-pulse" />
-          <div className="h-3 bg-zinc-800 rounded-full w-2/3 animate-pulse" />
-        </div>
+        <SourcesAccordion sources={msg.sources} />
       </div>
     </div>
   );
@@ -324,28 +358,52 @@ function StreamingMessage() {
 
 function WelcomeState({ onStarterClick }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-8 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600/30 to-violet-800/20 border border-violet-500/30 flex items-center justify-center mb-6 shadow-lg shadow-violet-500/10">
-        <Brain className="w-8 h-8 text-violet-400" />
+    <div style={{
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      height: "100%", textAlign: "center", padding: "0 32px",
+    }}>
+      <div style={{
+        width: 64, height: 64, borderRadius: 20, padding: 16,
+        background: "rgba(124,58,237,.2)",
+        border: "1px solid rgba(124,58,237,.3)",
+        color: "#a78bfa", marginBottom: 20,
+      }}>
+        <Icon.Brain />
       </div>
-      <h2 className="text-xl font-semibold text-zinc-100 mb-2">Ask your documents anything</h2>
-      <p className="text-[13px] text-zinc-500 max-w-sm leading-relaxed mb-10">
-        Upload files to your knowledge base, then ask questions. ContextMind retrieves relevant passages and cites its sources.
+      <h2 style={{ fontSize: 20, fontWeight: 600, color: "#f4f4f5", marginBottom: 8 }}>
+        Ask your documents anything
+      </h2>
+      <p style={{ fontSize: 13, color: "#71717a", maxWidth: 340, lineHeight: 1.7, marginBottom: 36 }}>
+        Upload PDFs, Word docs, or scrape websites. NexusRetrieval finds the
+        exact passages that answer your question and cites every source.
       </p>
-      <div className="grid grid-cols-1 gap-3 w-full max-w-md">
-        {STARTER_CARDS.map((card) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 400 }}>
+        {STARTER_PROMPTS.map((prompt) => (
           <button
-            key={card.title}
-            onClick={() => onStarterClick(card.title)}
-            className="flex items-start gap-3 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600 hover:bg-zinc-800 text-left transition-all duration-200 group"
+            key={prompt}
+            onClick={() => onStarterClick(prompt)}
+            style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "12px 16px", borderRadius: 12,
+              border: "1px solid rgba(63,63,70,.5)",
+              background: "rgba(39,39,42,.5)",
+              cursor: "pointer", textAlign: "left",
+              fontFamily: "inherit", transition: "all .2s",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = "#52525b";
+              e.currentTarget.style.background = "rgba(39,39,42,.9)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = "rgba(63,63,70,.5)";
+              e.currentTarget.style.background = "rgba(39,39,42,.5)";
+            }}
           >
-            <div className="w-8 h-8 rounded-lg bg-zinc-700/60 flex items-center justify-center shrink-0 group-hover:bg-violet-600/20 group-hover:border group-hover:border-violet-500/30 transition-all">
-              <card.icon className="w-4 h-4 text-zinc-400 group-hover:text-violet-400 transition-colors" />
-            </div>
-            <div>
-              <p className="text-[13px] font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">{card.title}</p>
-              <p className="text-[12px] text-zinc-600 mt-0.5">{card.desc}</p>
-            </div>
+            <span style={{ width: 18, height: 18, color: "#a78bfa", flexShrink: 0 }}>
+              <Icon.Sparkles />
+            </span>
+            <span style={{ fontSize: 13, color: "#d4d4d8" }}>{prompt}</span>
           </button>
         ))}
       </div>
@@ -353,304 +411,313 @@ function WelcomeState({ onStarterClick }) {
   );
 }
 
-function SourceInspector({ source, onClose }) {
-  if (!source) return null;
-  return (
-    <div className="w-72 border-l border-zinc-800 bg-zinc-950 flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-zinc-800">
-        <div className="flex items-center gap-2">
-          <PanelRightOpen className="w-4 h-4 text-zinc-500" />
-          <span className="text-[13px] font-semibold text-zinc-300">Source Inspector</span>
-        </div>
-        <button onClick={onClose} className="p-1 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-all">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="flex items-center gap-2.5 p-3 bg-zinc-800/60 rounded-xl border border-zinc-700/50">
-          <FileIcon type={source.doc.endsWith(".pdf") ? "pdf" : source.doc.endsWith(".docx") ? "docx" : "txt"} size={18} />
-          <div>
-            <p className="text-[12px] font-semibold text-zinc-200">{source.doc}</p>
-            {source.page && <p className="text-[11px] text-zinc-600 mt-0.5">Page {source.page}</p>}
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Retrieved Chunk</p>
-          <div className="p-3 bg-violet-500/5 border border-violet-500/20 rounded-xl">
-            <p className="text-[12px] text-zinc-300 leading-relaxed">{source.snippet}</p>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Relevance Score</p>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-violet-600 to-violet-400 rounded-full" style={{ width: "87%" }} />
-            </div>
-            <span className="text-[12px] font-semibold text-violet-400">0.87</span>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Full Document Context</p>
-          <div className="p-3 bg-zinc-800/40 border border-zinc-700/40 rounded-xl space-y-2">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className={`h-2.5 rounded-full ${i === 2 ? "bg-violet-500/30 border border-violet-500/30" : "bg-zinc-700/60"}`}
-                style={{ width: `${[85, 92, 100, 73, 88, 66][i]}%` }} />
-            ))}
-          </div>
-          <p className="text-[11px] text-zinc-600 mt-2 text-center">Highlighted passage shown in context</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
-export default function ContextMindRAG() {
-  const [docs, setDocs] = useState(INITIAL_DOCS);
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+// ── Main App ──────────────────────────────────────────────────────────────────
+export default function App() {
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [selectedSource, setSelectedSource] = useState(null);
+  const [url, setUrl] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [connectionStatus] = useState("connected");
-  const messagesEndRef = useRef(null);
-  const textareaRef = useRef(null);
+  const [urlError, setUrlError] = useState("");
+  const [urlLoading, setUrlLoading] = useState(false);
 
+  const messagesEndRef = useRef();
+  const textareaRef = useRef();
+
+  const { messages, isStreaming, sendMessage, stopStreaming } = useChat();
+  const {
+    docs, connectionStatus, docCount,
+    handleFileUpload, handleScrapeUrl, removeDoc,
+  } = useKnowledgeBase();
+
+  // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streaming]);
+  }, [messages]);
 
-  const handleFileDrop = useCallback((files) => {
-    const newDocs = files.map((file, i) => ({
-      id: Date.now() + i,
-      name: file.name || file,
-      type: file.name?.endsWith(".pdf") ? "pdf" : file.name?.endsWith(".docx") ? "docx" : file.type === "web" ? "web" : "txt",
-      status: "parsing",
-      size: file.size ? `${(file.size / 1024).toFixed(0)} KB` : "Web",
-    }));
-    setDocs(prev => [...prev, ...newDocs]);
-
-    newDocs.forEach(doc => {
-      setTimeout(() => setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, status: "embedding" } : d)), 1500);
-      setTimeout(() => setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, status: "ready" } : d)), 3500);
-    });
-  }, []);
-
-  const handleDelete = useCallback((id) => {
-    setDocs(prev => prev.filter(d => d.id !== id));
-  }, []);
-
-  const handleSend = useCallback(async (text) => {
-    const content = text || input.trim();
-    if (!content || streaming) return;
+  const handleSend = useCallback((text) => {
+    const content = (text || input).trim();
+    if (!content || isStreaming) return;
     setInput("");
-
-    const userMsg = { id: Date.now(), role: "user", content, ts: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
-    setMessages(prev => [...prev, userMsg]);
-    setStreaming(true);
-
-    // Simulate streaming AI response
-    setTimeout(() => {
-      const aiMsg = {
-        id: Date.now() + 1, role: "ai",
-        content: `Based on the available documents in your knowledge base, I can provide the following analysis:\n\n**Key Findings**\nThe documents collectively suggest a strong forward trajectory, with the Q4 financial data corroborating the strategic initiatives outlined in the board memo. Market conditions appear favorable.\n\n**Supporting Evidence**\n1. **Financial metrics** — The Q4 report confirms above-benchmark growth with healthy margins across all product lines\n2. **Strategic alignment** — The investment roadmap directly addresses the TAM opportunity identified in the market overview\n3. **Risk considerations** — Integration timelines remain the primary execution risk flagged across multiple sources`,
-        ts: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        sources: MOCK_SOURCES,
-        sourcesOpen: false
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      setStreaming(false);
-    }, 2200);
-  }, [input, streaming]);
-
-  const handleToggleSources = useCallback((msgId) => {
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, sourcesOpen: !m.sourcesOpen } : m));
-  }, []);
+    sendMessage(content);
+  }, [input, isStreaming, sendMessage]);
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const charCount = input.length;
-  const maxChars = 4000;
-  const charPct = Math.min((charCount / maxChars) * 100, 100);
+  const handleScrape = async () => {
+    if (!url.trim()) return;
+    setUrlError("");
+    setUrlLoading(true);
+    try {
+      new URL(url); // validate format
+      await handleScrapeUrl(url.trim());
+      setUrl("");
+    } catch (err) {
+      setUrlError(err.message.includes("Invalid URL") ? "Please enter a valid URL" : err.message);
+    } finally {
+      setUrlLoading(false);
+    }
+  };
+
+  const connColor = CONN_COLOR[connectionStatus] || "#f59e0b";
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+    <>
+      {/* Global styles */}
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #09090b; font-family: 'SF Pro Display', 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes shimmer { 0%,100%{opacity:.35} 50%{opacity:.65} }
+        @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+        textarea { font-family: inherit; }
+        textarea::placeholder { color: #52525b; }
+      `}</style>
 
-      {/* ── Sidebar ── */}
-      <div className={`${sidebarOpen ? "w-80" : "w-0"} shrink-0 flex flex-col border-r border-zinc-800/80 bg-zinc-900/50 transition-all duration-300 overflow-hidden`}>
-        <div className="flex-1 overflow-y-auto">
+      <div style={{ display: "flex", height: "100vh", background: "#09090b", color: "#f4f4f5", overflow: "hidden" }}>
+
+        {/* ── Sidebar ──────────────────────────────────────────────────────── */}
+        <div style={{
+          width: sidebarOpen ? 280 : 0, flexShrink: 0,
+          display: "flex", flexDirection: "column",
+          borderRight: "1px solid #1c1c1e",
+          background: "rgba(18,18,20,.8)",
+          transition: "width .3s ease", overflow: "hidden",
+        }}>
           {/* Header */}
-          <div className="px-4 py-4 border-b border-zinc-800/80">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-violet-600/30 border border-violet-500/40 flex items-center justify-center">
-                  <Brain className="w-4 h-4 text-violet-400" />
+          <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid #1c1c1e" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, padding: 6,
+                  background: "rgba(124,58,237,.25)",
+                  border: "1px solid rgba(124,58,237,.4)", color: "#a78bfa",
+                }}>
+                  <Icon.Brain />
                 </div>
-                <span className="text-[14px] font-bold text-zinc-100 tracking-tight">NexusRetrieval</span>
+                <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.02em" }}>
+                  NexusRetrieval
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 bg-zinc-800/60 border border-zinc-700/40 rounded-full px-2.5 py-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLORS[connectionStatus]} ${connectionStatus === "connecting" ? "animate-pulse" : ""}`} />
-                <span className="text-[11px] text-zinc-500 capitalize">{connectionStatus}</span>
+              {/* Connection badge */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: "rgba(39,39,42,.6)",
+                border: "1px solid rgba(63,63,70,.4)",
+                borderRadius: 999, padding: "3px 8px",
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: connColor, display: "inline-block",
+                  animation: connectionStatus === "connecting" ? "pulse 1.5s infinite" : "none",
+                }} />
+                <span style={{ fontSize: 10, color: "#71717a", textTransform: "capitalize" }}>
+                  {connectionStatus}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Upload Zone */}
-          <div className="px-4 py-4 border-b border-zinc-800/60">
-            <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-3">Knowledge Base</p>
-            <DropZone onFileDrop={handleFileDrop} />
-          </div>
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            {/* Upload section */}
+            <div style={{ padding: "14px 12px", borderBottom: "1px solid #1c1c1e" }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                Knowledge Base
+              </div>
+              <DropZone onFiles={handleFileUpload} />
 
-          {/* Document List */}
-          <div className="px-2 py-3">
-            <div className="flex items-center justify-between px-2 mb-2">
-              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Sources</p>
-              <span className="text-[11px] text-zinc-600">{docs.length} files</span>
-            </div>
-            <div className="space-y-0.5">
-              {docs.map(doc => <DocItem key={doc.id} doc={doc} onDelete={handleDelete} />)}
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="px-4 py-3 border-t border-zinc-800/80">
-          <div className="flex items-center gap-2 text-zinc-600">
-            <Zap className="w-3.5 h-3.5 text-violet-500" />
-            <span className="text-[11px]">RAG • text-embedding-3-large</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Main Area ── */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar */}
-        <div className="flex items-center gap-3 px-4 h-12 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-sm shrink-0">
-          <button
-            onClick={() => setSidebarOpen(p => !p)}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-all"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-          <div className="h-4 w-px bg-zinc-800" />
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-zinc-600" />
-            <span className="text-[13px] text-zinc-400 font-medium">Document Analysis</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            {selectedSource && (
-              <button
-                onClick={() => setSelectedSource(null)}
-                className="flex items-center gap-1.5 text-[12px] text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                <PanelRightClose className="w-4 h-4" />
-                <span>Close Inspector</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 flex min-h-0">
-          {/* ── Chat Area ── */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-6">
-              {messages.length === 0 ? (
-                <WelcomeState onStarterClick={handleSend} />
-              ) : (
-                <div className="max-w-2xl mx-auto">
-                  {messages.map(msg => (
-                    <ChatMessage
-                      key={msg.id}
-                      msg={msg}
-                      onSourceClick={setSelectedSource}
-                      onToggleSources={handleToggleSources}
-                    />
-                  ))}
-                  {streaming && <StreamingMessage />}
-                  <div ref={messagesEndRef} />
+              {/* URL scraper */}
+              <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+                <div style={{
+                  flex: 1, display: "flex", alignItems: "center", gap: 8,
+                  background: "rgba(39,39,42,.6)", border: "1px solid #3f3f46",
+                  borderRadius: 8, padding: "7px 10px",
+                }}>
+                  <span style={{ width: 14, height: 14, color: "#71717a", flexShrink: 0 }}>
+                    <Icon.Link />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Paste URL to scrape…"
+                    value={url}
+                    onChange={e => { setUrl(e.target.value); setUrlError(""); }}
+                    onKeyDown={e => e.key === "Enter" && handleScrape()}
+                    style={{
+                      background: "transparent", border: "none", outline: "none",
+                      fontSize: 12, color: "#d4d4d8", flex: 1, fontFamily: "inherit",
+                    }}
+                  />
                 </div>
+                <button
+                  onClick={handleScrape}
+                  disabled={urlLoading || !url.trim()}
+                  style={{
+                    padding: "7px 12px", borderRadius: 8, border: "none",
+                    background: urlLoading ? "#4c1d95" : "#7c3aed",
+                    color: "#fff", fontSize: 12, fontWeight: 500,
+                    cursor: urlLoading ? "not-allowed" : "pointer",
+                    whiteSpace: "nowrap", fontFamily: "inherit",
+                    transition: "background .2s",
+                  }}
+                >
+                  {urlLoading ? "…" : "Scrape"}
+                </button>
+              </div>
+              {urlError && (
+                <p style={{ fontSize: 11, color: "#f87171", marginTop: 5, paddingLeft: 2 }}>
+                  {urlError}
+                </p>
               )}
             </div>
 
-            {/* Input Area */}
-            <div className="shrink-0 px-6 py-4 border-t border-zinc-800/60">
-              <div className="max-w-2xl mx-auto">
-                <div className="relative flex items-end gap-3 bg-zinc-900/80 border border-zinc-700/60 rounded-2xl px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-sm focus-within:border-zinc-600 transition-all duration-200">
-                  <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask a question about your documents…"
-                    rows={1}
-                    maxLength={maxChars}
-                    className="flex-1 bg-transparent text-[14px] text-zinc-200 placeholder:text-zinc-600 outline-none resize-none leading-relaxed max-h-32 overflow-y-auto"
-                    style={{ scrollbarWidth: "none" }}
-                  />
-
-                  <div className="flex items-center gap-2.5 shrink-0 pb-0.5">
-                    {/* Char counter ring */}
-                    <div className="relative w-5 h-5">
-                      <svg viewBox="0 0 20 20" className="rotate-[-90deg] w-5 h-5">
-                        <circle cx="10" cy="10" r="8" fill="none" stroke="#27272a" strokeWidth="2" />
-                        <circle
-                          cx="10" cy="10" r="8"
-                          fill="none"
-                          stroke={charPct > 90 ? "#f87171" : charPct > 70 ? "#fbbf24" : "#7c3aed"}
-                          strokeWidth="2"
-                          strokeDasharray={`${2 * Math.PI * 8}`}
-                          strokeDashoffset={`${2 * Math.PI * 8 * (1 - charPct / 100)}`}
-                          strokeLinecap="round"
-                          className="transition-all duration-200"
-                        />
-                      </svg>
-                    </div>
-
-                    <button
-                      onClick={() => handleSend()}
-                      disabled={!input.trim() || streaming}
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200
-                        ${input.trim() && !streaming
-                          ? "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/30"
-                          : "bg-zinc-800 text-zinc-600 cursor-not-allowed"
-                        }`}
-                    >
-                      {streaming
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : <ArrowUp className="w-4 h-4" />
-                      }
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mt-2 px-1">
-                  <p className="text-[11px] text-zinc-700">
-                    {docs.filter(d => d.status === "ready").length} sources active
-                    {docs.some(d => d.status !== "ready") && (
-                      <span className="text-amber-600 ml-2">
-                        · {docs.filter(d => d.status !== "ready").length} processing
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[11px] text-zinc-700">{charCount > 0 ? `${charCount}/${maxChars}` : "⏎ to send"}</p>
-                </div>
+            {/* Document list */}
+            <div style={{ padding: "10px 8px", flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px 8px" }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  Sources
+                </span>
+                <span style={{ fontSize: 11, color: "#52525b" }}>
+                  {docCount} vectors
+                </span>
               </div>
+              {docs.length === 0 ? (
+                <p style={{ fontSize: 12, color: "#3f3f46", textAlign: "center", padding: "20px 8px" }}>
+                  No documents yet
+                </p>
+              ) : (
+                docs.map(doc => (
+                  <DocItem key={doc.id} doc={doc} onDelete={removeDoc} />
+                ))
+              )}
             </div>
           </div>
 
-          {/* ── Source Inspector Panel ── */}
-          {selectedSource && (
-            <SourceInspector source={selectedSource} onClose={() => setSelectedSource(null)} />
-          )}
+          {/* Footer */}
+          <div style={{ padding: "10px 16px", borderTop: "1px solid #1c1c1e" }}>
+            <span style={{ fontSize: 11, color: "#3f3f46" }}>
+              ⚡ LCEL · ChromaDB · LLaMA 3.1
+            </span>
+          </div>
+        </div>
+
+        {/* ── Main area ────────────────────────────────────────────────────── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+
+          {/* Top bar */}
+          <div style={{
+            height: 48, display: "flex", alignItems: "center", gap: 10,
+            padding: "0 16px", borderBottom: "1px solid #1c1c1e",
+            background: "rgba(9,9,11,.8)", flexShrink: 0,
+          }}>
+            <button
+              onClick={() => setSidebarOpen(p => !p)}
+              style={{
+                width: 28, height: 28, padding: 6, borderRadius: 8,
+                border: "none", background: "transparent",
+                color: "#52525b", cursor: "pointer",
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = "#d4d4d8"}
+              onMouseLeave={e => e.currentTarget.style.color = "#52525b"}
+            >
+              <Icon.Menu />
+            </button>
+            <div style={{ width: 1, height: 16, background: "#27272a" }} />
+            <span style={{ fontSize: 13, color: "#71717a", fontWeight: 500 }}>
+              Document Intelligence Chat
+            </span>
+            <div style={{ marginLeft: "auto", fontSize: 11, color: "#3f3f46" }}>
+              {messages.length > 0 && `${messages.filter(m => m.role === "user").length} exchanges`}
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 0" }}>
+            {messages.length === 0
+              ? <WelcomeState onStarterClick={handleSend} />
+              : (
+                <div style={{ maxWidth: 680, margin: "0 auto" }}>
+                  {messages.map(msg => (
+                    <div key={msg.id} style={{ animation: "fadeIn .25s ease-out" }}>
+                      <ChatMessage msg={msg} />
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} style={{ height: 8 }} />
+                </div>
+              )
+            }
+          </div>
+
+          {/* Input bar */}
+          <div style={{ flexShrink: 0, padding: "12px 24px 20px", borderTop: "1px solid #1c1c1e" }}>
+            <div style={{ maxWidth: 680, margin: "0 auto" }}>
+              <div style={{
+                display: "flex", alignItems: "flex-end", gap: 10,
+                background: "rgba(18,18,20,.9)",
+                border: "1px solid #3f3f46",
+                borderRadius: 18, padding: "10px 12px 10px 16px",
+                boxShadow: "0 8px 32px rgba(0,0,0,.4)",
+                transition: "border-color .2s",
+              }}
+                onFocusCapture={e => e.currentTarget.style.borderColor = "#52525b"}
+                onBlurCapture={e => e.currentTarget.style.borderColor = "#3f3f46"}
+              >
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask a question about your documents…"
+                  rows={1}
+                  maxLength={4000}
+                  style={{
+                    flex: 1, background: "transparent", border: "none",
+                    outline: "none", fontSize: 14, color: "#e4e4e7",
+                    lineHeight: 1.6, resize: "none", maxHeight: 120,
+                    overflowY: "auto",
+                  }}
+                />
+                <button
+                  onClick={isStreaming ? stopStreaming : handleSend}
+                  style={{
+                    width: 34, height: 34, borderRadius: 10, border: "none",
+                    flexShrink: 0, cursor: "pointer", padding: 8,
+                    background: isStreaming ? "#7f1d1d"
+                      : input.trim() ? "#7c3aed" : "#27272a",
+                    color: isStreaming ? "#fca5a5"
+                      : input.trim() ? "#fff" : "#52525b",
+                    transition: "all .2s",
+                    boxShadow: input.trim() && !isStreaming
+                      ? "0 4px 14px rgba(124,58,237,.4)" : "none",
+                  }}
+                >
+                  {isStreaming ? <Icon.Stop /> : <Icon.Send />}
+                </button>
+              </div>
+
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                padding: "6px 4px 0", fontSize: 11, color: "#3f3f46",
+              }}>
+                <span>
+                  {docs.filter(d => d.status === "ready").length} sources ready
+                  {docs.some(d => d.status === "parsing" || d.status === "embedding") && (
+                    <span style={{ color: "#f59e0b", marginLeft: 8 }}>
+                      · {docs.filter(d => d.status !== "ready" && d.status !== "error").length} processing
+                    </span>
+                  )}
+                </span>
+                <span>{input.length > 0 ? `${input.length}/4000` : "⏎ send · ⇧⏎ newline"}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

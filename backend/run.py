@@ -1,6 +1,6 @@
 # run.py
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 
 load_dotenv()  # Must happen before app factory reads os.environ
 

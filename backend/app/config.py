@@ -11,7 +11,6 @@ class Config(BaseSettings):
     Pydantic validates types at startup — the app will refuse to start
     if a required variable is missing or the wrong type.
     """
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -22,6 +21,7 @@ class Config(BaseSettings):
     # ── Flask ────────────────────────────────────────────────────────────────
     flask_env: str = Field(default="development", alias="FLASK_ENV")
     secret_key: str = Field(default="dev-secret-change-in-prod", alias="FLASK_SECRET_KEY")
+    user_agent: str = Field(default="NexusRetrieval/1.0", alias="USER_AGENT")
 
     # ── Groq ─────────────────────────────────────────────────────────────────
     groq_api_key: str = Field(..., alias="GROQ_API_KEY")        # required

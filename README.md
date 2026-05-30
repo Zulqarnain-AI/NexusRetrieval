@@ -33,8 +33,10 @@
 
 NexusRetrieval is a full-stack RAG application built from scratch with a focus on production quality. It implements a **Multi-Query Retrieval** strategy — the LLM rewrites each user question into multiple semantic variants before searching the vector database, dramatically improving answer quality compared to naive single-query RAG.
 
-**Live Demo**
-- Frontend: nexusretrieval-frontend-nxwcshjka-zulqarnain-hassan.vercel.app
+## 🚀 Live Demo
+
+- **Frontend:** [nexusretrieval-frontend-nxwcshjka-zulqarnain-hassan.vercel.app](https://vercel.app)
+
 
 ---
 

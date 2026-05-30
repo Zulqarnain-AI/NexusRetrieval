@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from langchain_community.document_loaders import (
+from langchain_community.document_loaders import ( # type: ignore
     PyPDFLoader,
     Docx2txtLoader,
     WebBaseLoader,
@@ -131,6 +131,7 @@ def ingest_pdf(file_path: str) -> list[Document]:
         raise RuntimeError(f"Could not parse PDF '{source_name}': {exc}") from exc
 
     splitter = _get_text_splitter()
+    source_doc_id = str(uuid.uuid4())
     chunks: list[Document] = []
 
     for page in pages:
@@ -141,7 +142,7 @@ def ingest_pdf(file_path: str) -> list[Document]:
                 _build_metadata(
                     source_type="pdf",
                     source_name=source_name,
-                    extra={"page": page_num},
+                    extra={"page": page_num, "doc_id": source_doc_id},
                 )
             )
         chunks.extend(page_chunks)
@@ -178,6 +179,7 @@ def ingest_docx(file_path: str) -> list[Document]:
         raise RuntimeError(f"Could not parse DOCX '{source_name}': {exc}") from exc
 
     splitter = _get_text_splitter()
+    source_doc_id = str(uuid.uuid4())
     chunks = splitter.split_documents(docs)
 
     for chunk in chunks:
@@ -185,6 +187,7 @@ def ingest_docx(file_path: str) -> list[Document]:
             _build_metadata(
                 source_type="docx",
                 source_name=source_name,
+                extra={"doc_id": source_doc_id},
             )
         )
 
@@ -211,9 +214,15 @@ def ingest_txt(file_path: str) -> list[Document]:
     except Exception as exc:
         raise RuntimeError(f"Could not read TXT '{source_name}': {exc}") from exc
 
+    source_doc_id = str(uuid.uuid4())
+
     doc = Document(
         page_content=text,
-        metadata=_build_metadata(source_type="txt", source_name=source_name),
+        metadata=_build_metadata(
+            source_type="txt",
+            source_name=source_name,
+            extra={"doc_id": source_doc_id},
+        ),
     )
     splitter = _get_text_splitter()
     chunks = splitter.split_documents([doc])
@@ -267,6 +276,7 @@ def ingest_url(url: str) -> list[Document]:
         )
 
     splitter = _get_text_splitter()
+    source_doc_id = str(uuid.uuid4())
     chunks = splitter.split_documents(docs)
 
     for chunk in chunks:
@@ -274,7 +284,7 @@ def ingest_url(url: str) -> list[Document]:
             _build_metadata(
                 source_type="web",
                 source_name=url,
-                extra={"domain": urlparse(url).netloc},
+                extra={"domain": urlparse(url).netloc, "doc_id": source_doc_id},
             )
         )
 
@@ -369,7 +379,7 @@ def ingest_url_js(url: str) -> list[Document]:
     logger.info("Ingesting JS-rendered URL via Playwright", extra={"url": url})
 
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright # type: ignore
     except ImportError:
         logger.warning("Playwright not installed — falling back to WebBaseLoader")
         return ingest_url(url)
@@ -413,12 +423,18 @@ def ingest_url_js(url: str) -> list[Document]:
             "The page may require authentication."
         )
 
+    source_doc_id = str(uuid.uuid4())
+
     doc = Document(
         page_content=text.strip(),
         metadata=_build_metadata(
             source_type="web",
             source_name=url,
-            extra={"domain": urlparse(url).netloc, "renderer": "playwright"},
+            extra={
+                "domain": urlparse(url).netloc,
+                "renderer": "playwright",
+                "doc_id": source_doc_id,
+            },
         ),
     )
 

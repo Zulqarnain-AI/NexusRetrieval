@@ -55,6 +55,41 @@ export async function scrapeUrl(url) {
 }
 
 /**
+ * Deletes an ingested source and all its chunks by backend doc_id.
+ * @param {string} docId
+ */
+export async function deleteSource(docId) {
+  const resp = await fetch(`${BASE_URL}/documents/${encodeURIComponent(docId)}`, {
+    method: "DELETE",
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data.error || `Delete failed with status ${resp.status}`);
+  }
+
+  return data;
+}
+
+/**
+ * Clears the entire vector knowledge base.
+ */
+export async function resetKnowledgeBase() {
+  const resp = await fetch(`${BASE_URL}/knowledge-base/reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data.error || `Reset failed with status ${resp.status}`);
+  }
+
+  return data;
+}
+
+/**
  * Health check — used by the frontend to show backend connection status.
  * @returns {Promise<{status: string, knowledge_base: object}>}
  */

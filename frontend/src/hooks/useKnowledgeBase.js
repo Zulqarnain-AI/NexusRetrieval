@@ -1,6 +1,12 @@
 // frontend/src/hooks/useKnowledgeBase.js
 import { useState, useCallback, useEffect } from "react";
-import { uploadFile, scrapeUrl, checkHealth } from "../lib/api";
+import {
+  uploadFile,
+  scrapeUrl,
+  checkHealth,
+  deleteSource,
+  resetKnowledgeBase,
+} from "../lib/api";
 
 /**
  * Manages knowledge base state: uploaded docs, processing status,
@@ -25,7 +31,7 @@ export function useKnowledgeBase() {
     const id = `doc_${Date.now()}`;
     setDocs((prev) => [
       ...prev,
-      { id, name, type, status: "parsing", size: "—" },
+      { id, name, type, status: "parsing", size: "—", backendDocId: null },
     ]);
     return id;
   }, []);
@@ -36,8 +42,29 @@ export function useKnowledgeBase() {
     );
   }, []);
 
-  const removeDoc = useCallback((id) => {
+  const setBackendDocId = useCallback((id, backendDocId) => {
+    setDocs((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, backendDocId } : d))
+    );
+  }, []);
+
+  const removeDoc = useCallback(async (id) => {
+    const targetDoc = docs.find((d) => d.id === id);
+    if (!targetDoc) return;
+
+    if (targetDoc.backendDocId) {
+      const result = await deleteSource(targetDoc.backendDocId);
+      setDocCount(result.collection_stats?.document_count || 0);
+    }
+
     setDocs((prev) => prev.filter((d) => d.id !== id));
+  }, [docs]);
+
+  const resetKB = useCallback(async () => {
+    const result = await resetKnowledgeBase();
+    setDocs([]);
+    setDocCount(result.collection_stats?.document_count || 0);
+    return result;
   }, []);
 
   const handleFileUpload = useCallback(async (files) => {
@@ -56,6 +83,7 @@ export function useKnowledgeBase() {
         const result = await uploadFile(file);
 
         updateDocStatus(docId, "ready");
+        setBackendDocId(docId, result.source_doc_id || null);
         setDocCount(result.collection_stats?.document_count || 0);
 
       } catch (err) {
@@ -63,7 +91,7 @@ export function useKnowledgeBase() {
         console.error("Upload failed:", err.message);
       }
     }
-  }, [addDoc, updateDocStatus]);
+  }, [addDoc, updateDocStatus, setBackendDocId]);
 
   const handleScrapeUrl = useCallback(async (url) => {
     const domain = new URL(url).hostname;
@@ -77,6 +105,7 @@ export function useKnowledgeBase() {
       const result = await scrapeUrl(url);
 
       updateDocStatus(docId, "ready");
+      setBackendDocId(docId, result.source_doc_id || null);
       setDocCount(result.collection_stats?.document_count || 0);
       return result;
 
@@ -84,7 +113,7 @@ export function useKnowledgeBase() {
       updateDocStatus(docId, "error");
       throw err;
     }
-  }, [addDoc, updateDocStatus]);
+  }, [addDoc, updateDocStatus, setBackendDocId]);
 
   return {
     docs,
@@ -93,5 +122,6 @@ export function useKnowledgeBase() {
     handleFileUpload,
     handleScrapeUrl,
     removeDoc,
+    resetKB,
   };
 }

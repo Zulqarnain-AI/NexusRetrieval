@@ -3,7 +3,7 @@ import logging
 from typing import AsyncIterator, Iterator, Any
 from operator import itemgetter
 
-from langchain_groq import ChatGroq
+from langchain_groq import ChatGroq # type: ignore
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import (
@@ -229,7 +229,7 @@ def build_rag_chain():
     # Wrap our custom retriever in RunnableLambda so LCEL can pipe into it
     retrieve_and_format = RunnableLambda(
         lambda inputs: _format_docs_for_context(
-            retriever.invoke(inputs["question"])
+            retriever.invoke(inputs["question"]) # type: ignore
         )
     )
 
@@ -257,7 +257,7 @@ def build_rag_chain_with_sources():
 
     retrieve_and_format = RunnableLambda(
         lambda inputs: _format_docs_for_context(
-            retriever.invoke(inputs["question"])
+            retriever.invoke(inputs["question"]) # type: ignore
         )
     )
 

@@ -127,3 +127,41 @@ def collection_stats() -> dict:
     except Exception as exc:
         logger.error("Failed to fetch collection stats", extra={"error": str(exc)})
         return {"error": str(exc)}
+
+
+def delete_documents_by_doc_id(doc_id: str) -> int:
+    """
+    Deletes all chunks that belong to a single ingested source doc_id.
+    Returns the number of deleted chunks.
+    """
+    if not doc_id:
+        return 0
+
+    vs = get_vectorstore()
+    before = vs._collection.count()
+
+    vs.delete(where={"doc_id": doc_id})
+
+    after = vs._collection.count()
+    deleted = max(0, before - after)
+    logger.info(
+        "Deleted source from vectorstore",
+        extra={"doc_id": doc_id, "deleted_chunks": deleted},
+    )
+    return deleted
+
+
+def clear_collection() -> int:
+    """
+    Deletes every vector in the current collection.
+    Returns the number of deleted vectors.
+    """
+    vs = get_vectorstore()
+    existing_ids = vs._collection.get(include=[]).get("ids", [])
+
+    if not existing_ids:
+        return 0
+
+    vs.delete(ids=existing_ids)
+    logger.info("Knowledge base collection cleared", extra={"deleted_chunks": len(existing_ids)})
+    return len(existing_ids)

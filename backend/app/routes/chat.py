@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Iterator
 
-from flask import Blueprint, request, jsonify, Response, stream_with_context
+from flask import Blueprint, request, jsonify, Response, stream_with_context # type: ignore
 
 from app.core.rag_chain import build_rag_chain, retrieve_sources
 from app.core.vectorstore import collection_stats
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 chat_bp = Blueprint("chat", __name__)
 
 
-def _sse_event(event: str, data: any) -> str:
+def _sse_event(event: str, data: any) -> str: # type: ignore
     """
     Formats a Server-Sent Events message.
 

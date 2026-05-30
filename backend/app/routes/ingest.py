@@ -9,7 +9,12 @@ from werkzeug.utils import secure_filename
 
 from app.config import config
 from app.core.ingestion import ingest_file, ingest_url
-from app.core.vectorstore import add_documents, collection_stats
+from app.core.vectorstore import (
+    add_documents,
+    clear_collection,
+    collection_stats,
+    delete_documents_by_doc_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +91,7 @@ def upload_file():
     return jsonify({
         "status": "success",
         "original_filename": safe_name,
+        "source_doc_id": chunks[0].metadata.get("doc_id") if chunks else None,
         "chunks_created": len(chunks),
         "document_ids": ids[:5],        # sample only — full list can be huge
         "collection_stats": collection_stats(),
@@ -127,7 +133,51 @@ def scrape_url():
     return jsonify({
         "status": "success",
         "url": url,
+        "source_doc_id": chunks[0].metadata.get("doc_id") if chunks else None,
         "chunks_created": len(chunks),
         "document_ids": ids[:5],
         "collection_stats": collection_stats(),
     }), 201
+
+
+@ingest_bp.route("/documents/<doc_id>", methods=["DELETE"])
+def delete_document(doc_id: str):
+    """
+    Deletes one ingested source by doc_id (all of its chunks).
+    """
+    if not doc_id.strip():
+        return jsonify({"error": "doc_id is required"}), 400
+
+    try:
+        deleted_chunks = delete_documents_by_doc_id(doc_id.strip())
+    except Exception as exc:
+        logger.error("Source delete failed", extra={"doc_id": doc_id, "error": str(exc)}, exc_info=True)
+        return jsonify({"error": "Failed to delete source"}), 500
+
+    if deleted_chunks == 0:
+        return jsonify({"error": "Source not found"}), 404
+
+    return jsonify({
+        "status": "success",
+        "doc_id": doc_id,
+        "deleted_chunks": deleted_chunks,
+        "collection_stats": collection_stats(),
+    }), 200
+
+
+@ingest_bp.route("/knowledge-base/reset", methods=["POST"])
+def reset_knowledge_base():
+    """
+    Clears the entire knowledge base so a new chat starts with no sources.
+    """
+    try:
+        deleted_chunks = clear_collection()
+    except Exception as exc:
+        logger.error("Knowledge base reset failed", extra={"error": str(exc)}, exc_info=True)
+        return jsonify({"error": "Failed to reset knowledge base"}), 500
+
+    return jsonify({
+        "status": "success",
+        "deleted_chunks": deleted_chunks,
+        "collection_stats": collection_stats(),
+    }), 200

@@ -115,9 +115,22 @@ function StatusDot({ status }) {
 
 function DocItem({ doc, onDelete }) {
   const [hovered, setHovered] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const iconColor = doc.type === "pdf" ? "#fb7185"
     : doc.type === "docx" ? "#60a5fa"
     : doc.type === "web" ? "#34d399" : "#a78bfa";
+
+  const handleDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(doc.id);
+    } catch (err) {
+      console.error("Delete failed:", err?.message || err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div
@@ -146,11 +159,13 @@ function DocItem({ doc, onDelete }) {
       </div>
       {hovered && (
         <button
-          onClick={() => onDelete(doc.id)}
+          onClick={handleDelete}
+          disabled={isDeleting}
           style={{
             width: 20, height: 20, padding: 2, borderRadius: 5,
             border: "none", background: "transparent",
-            color: "#71717a", cursor: "pointer",
+            color: "#71717a", cursor: isDeleting ? "not-allowed" : "pointer",
+            opacity: isDeleting ? 0.6 : 1,
           }}
           onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
           onMouseLeave={e => e.currentTarget.style.color = "#71717a"}
@@ -421,11 +436,12 @@ export default function App() {
 
   const messagesEndRef = useRef();
   const textareaRef = useRef();
+  const [isResetting, setIsResetting] = useState(false);
 
-  const { messages, isStreaming, sendMessage, stopStreaming } = useChat();
+  const { messages, isStreaming, sendMessage, stopStreaming, clearMessages } = useChat();
   const {
     docs, connectionStatus, docCount,
-    handleFileUpload, handleScrapeUrl, removeDoc,
+    handleFileUpload, handleScrapeUrl, removeDoc, resetKB,
   } = useKnowledgeBase();
 
   // Auto-scroll to latest message
@@ -463,6 +479,26 @@ export default function App() {
   };
 
   const connColor = CONN_COLOR[connectionStatus] || "#f59e0b";
+
+  const handleResetChat = async () => {
+    if (isResetting) return;
+
+    setIsResetting(true);
+    try {
+      if (isStreaming) {
+        stopStreaming();
+      }
+      await resetKB();
+      clearMessages();
+      setInput("");
+      setUrl("");
+      setUrlError("");
+    } catch (err) {
+      console.error("Reset failed:", err?.message || err);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   return (
     <>
@@ -631,6 +667,24 @@ export default function App() {
             <span style={{ fontSize: 13, color: "#71717a", fontWeight: 500 }}>
               Document Intelligence Chat
             </span>
+            <button
+              onClick={handleResetChat}
+              disabled={isResetting}
+              style={{
+                marginLeft: 12,
+                padding: "6px 10px",
+                borderRadius: 8,
+                border: "1px solid rgba(239,68,68,.35)",
+                background: "rgba(127,29,29,.2)",
+                color: "#fca5a5",
+                cursor: isResetting ? "not-allowed" : "pointer",
+                fontSize: 12,
+                fontFamily: "inherit",
+                opacity: isResetting ? 0.7 : 1,
+              }}
+            >
+              {isResetting ? "Resetting..." : "Reset Chat"}
+            </button>
             <div style={{ marginLeft: "auto", fontSize: 11, color: "#3f3f46" }}>
               {messages.length > 0 && `${messages.filter(m => m.role === "user").length} exchanges`}
             </div>

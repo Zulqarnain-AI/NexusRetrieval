@@ -35,7 +35,7 @@ NexusRetrieval is a full-stack RAG application built from scratch with a focus o
 
 ## 🚀 Live Demo
 
-- **Frontend:** [nexusretrieval-frontend-nxwcshjka-zulqarnain-hassan.vercel.app](https://vercel.app)
+- **Frontend:** [nexusretrieval-frontend-nxwcshjka-zulqarnain-hassan.vercel.app](https://nexusretrieval-frontend.vercel.app/)
 
 
 ---

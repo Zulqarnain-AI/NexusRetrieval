@@ -2,8 +2,8 @@
 import logging
 from typing import Optional
 
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma # type: ignore
+from langchain_huggingface import HuggingFaceEmbeddings # type: ignore
 from langchain_core.documents import Document
 
 from app.config import config
@@ -65,7 +65,7 @@ def get_vectorstore() -> Chroma:
             embedding_function=get_embeddings(),
             persist_directory=config.chroma_db_resolved_path,
         )
-        count = _vectorstore._collection.count()
+        count = _vectorstore._collection.count() # type: ignore
         logger.info(
             "ChromaDB ready",
             extra={
